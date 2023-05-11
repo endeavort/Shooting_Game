@@ -1,5 +1,6 @@
 import pygame
 import sys
+import math
 from pygame.locals import *  # pygame.の省略用コード※関数は省略不可
 
 # 画像
@@ -19,6 +20,7 @@ BULLET_MAX = 100  # 発射できる弾の数
 bg_y = 0  # 背景スクロール用
 tmr = 0  # タイマー
 k_space = 0  # スペースキー用
+k_z = 0  # zキー用
 # プレイヤー
 pl_x = 480  # x座標
 pl_y = 360  # y座標
@@ -28,11 +30,12 @@ bu_no = 0
 bu_f = [False] * BULLET_MAX  # 発射中フラグ
 bu_x = [0] * BULLET_MAX  # x座標
 bu_y = [0] * BULLET_MAX  # y座標
+bu_a = [0] * BULLET_MAX  # 角度
 
 
 # プレイヤー操作関数
 def movd_pl(src, key):
-    global pl_x, pl_y, pl_d, k_space
+    global pl_x, pl_y, pl_d, k_space, k_z
     pl_d = 0
     # キー操作処理(1は押したとき)
     if key[K_UP] == 1:
@@ -55,27 +58,46 @@ def movd_pl(src, key):
             pl_x = 920
     k_space = (k_space + 1) * key[K_SPACE]
     if k_space % 5 == 1:
-        set_bullet()
+        set_bullet(0)
+    k_z = (k_z + 1) * key[K_z]
+    if k_z == 1:
+        set_bullet(10)
     src.blit(img_pl[3], [pl_x - 8, pl_y + 40 + (tmr % 3) * 2])
     src.blit(img_pl[pl_d], [pl_x - 37, pl_y - 48])
 
 
 # 弾のセット関数
-def set_bullet():
+def set_bullet(typ):
     global bu_no
-    bu_f[bu_no] = True
-    bu_x[bu_no] = pl_x
-    bu_y[bu_no] = pl_y - 50
-    bu_no = (bu_no + 1) % BULLET_MAX
+    # 単発
+    if typ == 0:
+        bu_f[bu_no] = True
+        bu_x[bu_no] = pl_x
+        bu_y[bu_no] = pl_y - 50
+        bu_a[bu_no] = 270
+        bu_no = (bu_no + 1) % BULLET_MAX
+    # 放射
+    if typ == 10:
+        for a in range(160, 390, 10):
+            bu_f[bu_no] = True
+            bu_x[bu_no] = pl_x
+            bu_y[bu_no] = pl_y - 50
+            bu_a[bu_no] = a
+            bu_no = (bu_no + 1) % BULLET_MAX
 
 
 # 弾の移動関数
 def move_bullet(src):
     for i in range(BULLET_MAX):
         if bu_f[i]:
-            bu_y[i] -= 36
-            src.blit(imb_bu, [bu_x[i] - 10, bu_y[i] - 32])
-            if bu_y[i] < 0:
+            bu_x[i] += 36 * math.cos(math.radians(bu_a[i]))
+            bu_y[i] += 36 * math.sin(math.radians(bu_a[i]))
+            img_rz = pygame.transform.rotozoom(imb_bu, -90 - bu_a[i], 1.0)
+            src.blit(
+                img_rz,
+                [bu_x[i] - img_rz.get_width() / 2, bu_y[i] - img_rz.get_height() / 2],
+            )
+            if bu_y[i] < 0 or bu_x[i] < 0 or bu_x[i] > 960:
                 bu_f[i] = False
 
 
