@@ -1,6 +1,6 @@
 import pygame
 import sys
-from pygame.locals import *  # pygame.の省略用コード
+from pygame.locals import *  # pygame.の省略用コード※関数は省略不可
 
 # 画像
 img_bg = pygame.image.load("images/background.png")
@@ -10,20 +10,31 @@ img_pl = [
     pygame.image.load("images/player_r.png"),
     pygame.image.load("images/player_burner.png"),
 ]
+imb_bu = pygame.image.load("images/bullet.png")
+
+# ============ 定数 ============
+BULLET_MAX = 100  # 発射できる弾の数
 
 # ============ 変数 ============
 bg_y = 0  # 背景スクロール用
 tmr = 0  # タイマー
+k_space = 0  # スペースキー用
 # プレイヤー
 pl_x = 480  # x座標
 pl_y = 360  # y座標
 pl_d = 0  # 傾き
+# 弾
+bu_no = 0
+bu_f = [False] * BULLET_MAX  # 発射中フラグ
+bu_x = [0] * BULLET_MAX  # x座標
+bu_y = [0] * BULLET_MAX  # y座標
 
 
 # プレイヤー操作関数
 def movd_pl(src, key):
-    global pl_x, pl_y, pl_d
+    global pl_x, pl_y, pl_d, k_space
     pl_d = 0
+    # キー操作処理(1は押したとき)
     if key[K_UP] == 1:
         pl_y -= 20
         if pl_y < 80:
@@ -42,8 +53,30 @@ def movd_pl(src, key):
         pl_x += 20
         if pl_x > 920:
             pl_x = 920
+    k_space = (k_space + 1) * key[K_SPACE]
+    if k_space % 5 == 1:
+        set_bullet()
     src.blit(img_pl[3], [pl_x - 8, pl_y + 40 + (tmr % 3) * 2])
     src.blit(img_pl[pl_d], [pl_x - 37, pl_y - 48])
+
+
+# 弾のセット関数
+def set_bullet():
+    global bu_no
+    bu_f[bu_no] = True
+    bu_x[bu_no] = pl_x
+    bu_y[bu_no] = pl_y - 50
+    bu_no = (bu_no + 1) % BULLET_MAX
+
+
+# 弾の移動関数
+def move_bullet(src):
+    for i in range(BULLET_MAX):
+        if bu_f[i]:
+            bu_y[i] -= 36
+            src.blit(imb_bu, [bu_x[i] - 10, bu_y[i] - 32])
+            if bu_y[i] < 0:
+                bu_f[i] = False
 
 
 def main():
@@ -76,6 +109,7 @@ def main():
 
         key = pygame.key.get_pressed()
         movd_pl(screen, key)
+        move_bullet(screen)
 
         pygame.display.update()
         clock.tick(30)
