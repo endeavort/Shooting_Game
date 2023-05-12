@@ -13,9 +13,12 @@ img_pl = [
     pygame.image.load("images/player_burner.png"),
 ]
 img_bu = pygame.image.load("images/bullet.png")
-img_en1 = [
+img_enemy = [
+    pygame.image.load("images/enemy4_atk.png"),
     pygame.image.load("images/enemy1.png"),
-    pygame.image.load("images/enemy1_atk.png"),
+    pygame.image.load("images/enemy2.png"),
+    pygame.image.load("images/enemy3.png"),
+    pygame.image.load("images/enemy4.png"),
 ]
 img_exp = [
     None,
@@ -63,14 +66,16 @@ bu_f = [False] * BULLET_MAX  # 発射中フラグ
 bu_x = [0] * BULLET_MAX  # x座標
 bu_y = [0] * BULLET_MAX  # y座標
 bu_a = [0] * BULLET_MAX  # 角度
-# 敵1
-en1_no = 0  # リスト番号
-en1_f = [False] * ENEMY_MAX  # 発射中フラグ
-en1_x = [0] * ENEMY_MAX  # x座標
-en1_y = [0] * ENEMY_MAX  # y座標
-en1_a = [0] * ENEMY_MAX  # 角度
-en1_type = [0] * ENEMY_MAX  # 種類（本体or弾）
-en1_speed = [0] * ENEMY_MAX  # スピード
+# 敵
+en_no = 0  # リスト番号
+en_f = [False] * ENEMY_MAX  # 発射中フラグ
+en_x = [0] * ENEMY_MAX  # x座標
+en_y = [0] * ENEMY_MAX  # y座標
+en_a = [0] * ENEMY_MAX  # 角度
+en_type = [0] * ENEMY_MAX  # 種類（本体or弾）
+en_speed = [0] * ENEMY_MAX  # スピード
+en_s = [0] * ENEMY_MAX  # シールド
+en_c = [0] * ENEMY_MAX  # カウント
 # 爆発
 exp_no = 0  # リスト番号
 exp_p = [0] * EXPLODE_MAX  # 画像番号
@@ -139,12 +144,12 @@ def move_pl(src, key):
     elif phase == 1:
         # 敵との接触チェック
         for i in range(ENEMY_MAX):
-            if en1_f[i]:
-                w = img_en1[en1_type[i]].get_width()
-                h = img_en1[en1_type[i]].get_height()
+            if en_f[i]:
+                w = img_enemy[en_type[i]].get_width()
+                h = img_enemy[en_type[i]].get_height()
                 r = int((w + h) / 4 + (74 + 96) / 4)
-                if get_dis(en1_x[i], en1_y[i], pl_x, pl_y) < r**2:
-                    set_effect(en1_x[i], en1_y[i])
+                if get_dis(en_x[i], en_y[i], pl_x, pl_y) < r**2:
+                    set_effect(en_x[i], en_y[i])
                     pl_e -= 10
                     if pl_e <= 0:
                         pl_e = 0
@@ -153,7 +158,7 @@ def move_pl(src, key):
                     if pl_m == 0:
                         pl_m = 60
                         se_damage.play()
-                    en1_f[i] = False
+                    en_f[i] = False
 
 
 # 弾のセット関数
@@ -193,67 +198,80 @@ def move_bullet(src):
 
 # 敵の出現関数
 def appear_enemy():
+    sec = tmr / 30
     if tmr % 30 == 0:
-        set_enemy(random.randint(20, 940), LINE[0], 90, 0, 6)
+        if 0 < sec < 15:
+            set_enemy(random.randint(20, 940), LINE[0], 90, 1, 8, 1)
+        if 15 < sec < 30:
+            set_enemy(random.randint(20, 940), LINE[0], 90, 2, 12, 1)
+        if 30 < sec < 45:
+            set_enemy(
+                random.randint(100, 860), LINE[0], random.randint(60, 120), 3, 6, 3
+            )
+        if 45 < sec < 60:
+            set_enemy(random.randint(100, 860), LINE[0], 90, 4, 12, 2)
 
 
 # 敵のセット関数
-def set_enemy(x, y, a, ty, sp):
-    global en1_no
+def set_enemy(x, y, a, ty, sp, s):
+    global en_no
     while True:
-        if not en1_f[en1_no]:
-            en1_f[en1_no] = True
-            en1_x[en1_no] = x
-            en1_y[en1_no] = y
-            en1_a[en1_no] = a
-            en1_type[en1_no] = ty
-            en1_speed[en1_no] = sp
+        if not en_f[en_no]:
+            en_f[en_no] = True
+            en_x[en_no] = x
+            en_y[en_no] = y
+            en_a[en_no] = a
+            en_type[en_no] = ty
+            en_speed[en_no] = sp
+            en_s[en_no] = s
+            en_c[en_no] = 0
             break
-        en1_no = (en1_no + 1) % ENEMY_MAX
+        en_no = (en_no + 1) % ENEMY_MAX
 
 
 # 敵の移動関数
 def move_enemy(scrn):
     global pl_e, phase, tmr, score
     for i in range(ENEMY_MAX):
-        if en1_f[i]:
-            ang = -90 - en1_a[i]
-            png = en1_type[i]
-            en1_x[i] += en1_speed[i] * math.cos(math.radians(en1_a[i]))
-            en1_y[i] += en1_speed[i] * math.sin(math.radians(en1_a[i]))
-            if en1_type[i] == 0 and en1_y[i] > 360:
+        if en_f[i]:
+            ang = -90 - en_a[i]
+            png = en_type[i]
+            en_x[i] += en_speed[i] * math.cos(math.radians(en_a[i]))
+            en_y[i] += en_speed[i] * math.sin(math.radians(en_a[i]))
+            if en_type[i] == 4:
                 # 弾の発射
-                set_enemy(en1_x[i], en1_y[i], 90, 1, 8)
-                en1_a[i] = -45
-                en1_speed[i] = 16
+                en_c[i] += 1
+                ang = en_c[i] * 10
+                if en_y[i] > 240 and en_a[i] == 90:
+                    en_a[i] = random.choice([50, 70, 110, 130])
+                    set_enemy(en_x[i], en_y[i], 90, 0, 6, 0)
             if (
-                en1_x[i] < LINE[2]
-                or LINE[3] < en1_x[i]
-                or en1_y[i] < LINE[0]
-                or LINE[1] < en1_y[i]
+                en_x[i] < LINE[2]
+                or LINE[3] < en_x[i]
+                or en_y[i] < LINE[0]
+                or LINE[1] < en_y[i]
             ):
-                en1_f[i] = False
+                en_f[i] = False
             # 弾と敵の接触判定
-            if en1_type[i] != 1:
-                w = img_en1[en1_type[i]].get_width()
-                h = img_en1[en1_type[i]].get_height()
+            if en_type[i] != 0:
+                w = img_enemy[en_type[i]].get_width()
+                h = img_enemy[en_type[i]].get_height()
                 r = int((w + h) / 4 + 12)
                 for n in range(BULLET_MAX):
-                    if (
-                        bu_f[n]
-                        and get_dis(en1_x[i], en1_y[i], bu_x[n], bu_y[n]) < r**2
-                    ):
+                    if bu_f[n] and get_dis(en_x[i], en_y[i], bu_x[n], bu_y[n]) < r**2:
                         bu_f[n] = False
-                        en1_f[i] = False
-                        set_effect(en1_x[i], en1_y[i])
+                        set_effect(en_x[i], en_y[i])
+                        en_c[i] -= 1
                         score += 100
+                        if en_s == 0:
+                            en_f[i] = False
                         if pl_e < 100:
                             pl_e += 1
             # 描画処理
-            img_rz = pygame.transform.rotozoom(img_en1[png], ang, 1.0)
+            img_rz = pygame.transform.rotozoom(img_enemy[png], ang, 1.0)
             scrn.blit(
                 img_rz,
-                [en1_x[i] - img_rz.get_width() / 2, en1_y[i] - img_rz.get_height() / 2],
+                [en_x[i] - img_rz.get_width() / 2, en_y[i] - img_rz.get_height() / 2],
             )
 
 
@@ -329,7 +347,7 @@ def main():
                 pl_e = 100
                 pl_m = 0
                 for i in range(ENEMY_MAX):
-                    en1_f[i] = False
+                    en_f[i] = False
                 for i in range(BULLET_MAX):
                     bu_f[i] = False
                 pygame.mixer.music.load("sounds/bgm.ogg")
