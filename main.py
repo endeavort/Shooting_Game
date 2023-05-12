@@ -51,6 +51,8 @@ LINE = [-80, 800, -80, 1040]  # 敵の出現エリア枠(上, 下, 左, 右)
 # ============ 変数 ============
 phase = 0  # フェーズ
 score = 0  # スコア
+hiscore = 10000  # ハイスコア
+new_record = False  # 記録更新フラグ
 bg_y = 0  # 背景スクロール用
 tmr = 0  # タイマー
 k_space = 0  # スペースキー用
@@ -95,12 +97,28 @@ def get_dis(x1, y1, x2, y2):
     return (x1 - x2) ** 2 + (y1 - y2) ** 2
 
 
-# 文字描画関数
+# 立体文字描画関数
 def draw_txt(scrn, txt, x, y, siz, col):
     fnt = pygame.font.Font(None, siz)
-    sur = fnt.render(txt, True, col)
+    cr = int(col[0] / 2)
+    cg = int(col[1] / 2)
+    cb = int(col[2] / 2)
+    sur = fnt.render(txt, True, (cr, cg, cb))
     x -= sur.get_width() / 2
     y -= sur.get_height() / 2
+    scrn.blit(sur, [x + 1, y + 1])
+    cr = col[0] + 128
+    if cr > 255:
+        cr = 255
+    cg = col[1] + 128
+    if cg > 255:
+        cg = 255
+    cb = col[2] + 128
+    if cb > 255:
+        cb = 255
+    sur = fnt.render(txt, True, (cr, cg, cb))
+    scrn.blit(sur, [x - 1, y - 1])
+    sur = fnt.render(txt, True, col)
     scrn.blit(sur, [x, y])
 
 
