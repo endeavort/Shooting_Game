@@ -25,6 +25,17 @@ img_exp = [
     pygame.image.load("images/explosion4.png"),
     pygame.image.load("images/explosion5.png"),
 ]
+img_energy = pygame.image.load("images/energy.png")
+img_title = [
+    pygame.image.load("images/nebula.png"),
+    pygame.image.load("images/logo.png"),
+]
+
+# 色
+BLACK = (0, 0, 0)
+SILVER = (192, 208, 224)
+RED = (255, 0, 0)
+CYAN = (0, 224, 255)
 
 # ============ 定数 ============
 BULLET_MAX = 100  # 発射できる弾の数（最大値）
@@ -33,14 +44,19 @@ EXPLODE_MAX = 100  # 爆発演出の数（最大値）
 LINE = [-80, 800, -80, 1040]  # 敵の出現エリア枠(上, 下, 左, 右)
 
 # ============ 変数 ============
+phase = 0  # フェーズ
+score = 0  # スコア
 bg_y = 0  # 背景スクロール用
 tmr = 0  # タイマー
 k_space = 0  # スペースキー用
 k_z = 0  # zキー用
+
 # プレイヤー
 pl_x = 480  # x座標
 pl_y = 360  # y座標
 pl_d = 0  # 傾き
+pl_e = 0  # エネルギー
+pl_m = 0  # 無敵状態
 # 弾
 bu_no = 0  # リスト番号
 bu_f = [False] * BULLET_MAX  # 発射中フラグ
@@ -69,7 +85,7 @@ def get_dis(x1, y1, x2, y2):
 
 # プレイヤー操作関数
 def movd_pl(src, key):
-    global pl_x, pl_y, pl_d, k_space, k_z
+    global pl_x, pl_y, pl_d, k_space, k_z, pl_e, pl_m
     pl_d = 0
     # キー操作処理(1は押したとき)
     if key[K_UP] == 1:
@@ -94,10 +110,30 @@ def movd_pl(src, key):
     if k_space % 5 == 1:
         set_bullet(0)
     k_z = (k_z + 1) * key[K_z]
-    if k_z == 1:
+    if k_z == 1 and pl_e > 10:
         set_bullet(10)
-    src.blit(img_pl[3], [pl_x - 8, pl_y + 40 + (tmr % 3) * 2])
-    src.blit(img_pl[pl_d], [pl_x - 37, pl_y - 48])
+        pl_e -= 10
+    # 描画処理
+    if pl_m % 2 == 0:
+        src.blit(img_pl[3], [pl_x - 8, pl_y + 40 + (tmr % 3) * 2])
+        src.blit(img_pl[pl_d], [pl_x - 37, pl_y - 48])
+    if pl_m > 0:
+        pl_m -= 1
+        return
+    # 敵との接触チェック
+    for i in range(ENEMY_MAX):
+        if en1_f[i]:
+            w = img_en1[en1_type[i]].get_width()
+            h = img_en1[en1_type[i]].get_height()
+            r = int((w + h) / 4 + (74 + 96) / 4)
+            if get_dis(en1_x[i], en1_y[i], pl_x, pl_y) < r**2:
+                set_effect(en1_x[i], en1_y[i])
+                pl_e -= 10
+                if pl_e <= 0:
+                    pl_e = 0
+                if pl_m == 0:
+                    pl_m = 60
+                en1_f[i] = False
 
 
 # 弾のセット関数
@@ -158,6 +194,7 @@ def set_enemy(x, y, a, ty, sp):
 
 # 敵の移動関数
 def move_enemy(scrn):
+    global pl_e
     for i in range(ENEMY_MAX):
         if en1_f[i]:
             ang = -90 - en1_a[i]
@@ -189,6 +226,8 @@ def move_enemy(scrn):
                         bu_f[n] = False
                         en1_f[i] = False
                         set_effect(en1_x[i], en1_y[i])
+                        if pl_e < 100:
+                            pl_e += 1
             # 描画処理
             img_rz = pygame.transform.rotozoom(img_en1[png], ang, 1.0)
             scrn.blit(
@@ -250,6 +289,10 @@ def main():
         appear_enemy()
         move_enemy(screen)
         draw_explode(screen)
+        screen.blit(img_energy, [40, 680])
+        pygame.draw.rect(
+            screen, (64, 32, 32), [40 + pl_e * 4, 680, (100 - pl_e) * 4, 12]
+        )
 
         pygame.display.update()
         clock.tick(30)
