@@ -52,8 +52,8 @@ k_space = 0  # スペースキー用
 k_z = 0  # zキー用
 
 # プレイヤー
-pl_x = 480  # x座標
-pl_y = 360  # y座標
+pl_x = 0  # x座標
+pl_y = 0  # y座標
 pl_d = 0  # 傾き
 pl_e = 0  # エネルギー
 pl_m = 0  # 無敵状態
@@ -83,9 +83,18 @@ def get_dis(x1, y1, x2, y2):
     return (x1 - x2) ** 2 + (y1 - y2) ** 2
 
 
+# 文字描画関数
+def draw_txt(scrn, txt, x, y, siz, col):
+    fnt = pygame.font.Font(None, siz)
+    sur = fnt.render(txt, True, col)
+    x -= sur.get_width() / 2
+    y -= sur.get_height() / 2
+    scrn.blit(sur, [x, y])
+
+
 # プレイヤー操作関数
-def movd_pl(src, key):
-    global pl_x, pl_y, pl_d, k_space, k_z, pl_e, pl_m
+def move_pl(src, key):
+    global pl_x, pl_y, pl_d, k_space, k_z, pl_e, pl_m, phase, tmr
     pl_d = 0
     # キー操作処理(1は押したとき)
     if key[K_UP] == 1:
@@ -120,20 +129,23 @@ def movd_pl(src, key):
     if pl_m > 0:
         pl_m -= 1
         return
-    # 敵との接触チェック
-    for i in range(ENEMY_MAX):
-        if en1_f[i]:
-            w = img_en1[en1_type[i]].get_width()
-            h = img_en1[en1_type[i]].get_height()
-            r = int((w + h) / 4 + (74 + 96) / 4)
-            if get_dis(en1_x[i], en1_y[i], pl_x, pl_y) < r**2:
-                set_effect(en1_x[i], en1_y[i])
-                pl_e -= 10
-                if pl_e <= 0:
-                    pl_e = 0
-                if pl_m == 0:
-                    pl_m = 60
-                en1_f[i] = False
+    elif phase == 1:
+        # 敵との接触チェック
+        for i in range(ENEMY_MAX):
+            if en1_f[i]:
+                w = img_en1[en1_type[i]].get_width()
+                h = img_en1[en1_type[i]].get_height()
+                r = int((w + h) / 4 + (74 + 96) / 4)
+                if get_dis(en1_x[i], en1_y[i], pl_x, pl_y) < r**2:
+                    set_effect(en1_x[i], en1_y[i])
+                    pl_e -= 10
+                    if pl_e <= 0:
+                        pl_e = 0
+                        phase = 2
+                        tmr = 0
+                    if pl_m == 0:
+                        pl_m = 60
+                    en1_f[i] = False
 
 
 # 弾のセット関数
@@ -194,7 +206,7 @@ def set_enemy(x, y, a, ty, sp):
 
 # 敵の移動関数
 def move_enemy(scrn):
-    global pl_e
+    global pl_e, phase, tmr, score
     for i in range(ENEMY_MAX):
         if en1_f[i]:
             ang = -90 - en1_a[i]
@@ -226,6 +238,7 @@ def move_enemy(scrn):
                         bu_f[n] = False
                         en1_f[i] = False
                         set_effect(en1_x[i], en1_y[i])
+                        score += 100
                         if pl_e < 100:
                             pl_e += 1
             # 描画処理
@@ -256,7 +269,7 @@ def draw_explode(srcn):
 
 
 def main():
-    global bg_y, tmr
+    global bg_y, tmr, phase, score, pl_x, pl_y, pl_d, pl_e, pl_m
     pygame.init()
     pygame.display.set_caption("Shooting Game")
     screen = pygame.display.set_mode((960, 720))
@@ -284,15 +297,64 @@ def main():
         screen.blit(img_bg, [0, bg_y])
 
         key = pygame.key.get_pressed()
-        movd_pl(screen, key)
-        move_bullet(screen)
-        appear_enemy()
-        move_enemy(screen)
+
+        # タイトル画面
+        if phase == 0:
+            img_rz = pygame.transform.rotozoom(img_title[0], -tmr % 360, 1.0)
+            screen.blit(
+                img_rz, [480 - img_rz.get_width() / 2, 280 - img_rz.get_height() / 2]
+            )
+            screen.blit(img_title[1], [70, 160])
+            draw_txt(screen, "Press [SPACE] to start!", 480, 600, 50, SILVER)
+            if key[K_SPACE] == 1:
+                phase = 1
+                tmr = 0
+                score = 0
+                pl_x = 480
+                pl_y = 600
+                pl_d = 0
+                pl_e = 100
+                pl_m = 0
+                for i in range(ENEMY_MAX):
+                    en1_f[i] = False
+                for i in range(BULLET_MAX):
+                    bu_f[i] = False
+
+        # ゲーム画面
+        if phase == 1:
+            move_pl(screen, key)
+            move_bullet(screen)
+            appear_enemy()
+            move_enemy(screen)
+            if tmr == 30 * 10:
+                phase = 3
+                tmr = 0
+
+        # ゲームオーバー
+        if phase == 2:
+            move_bullet(screen)
+            move_enemy(screen)
+            draw_txt(screen, "GAME OVER", 480, 300, 80, RED)
+            if tmr == 150:
+                phase = 0
+                tmr = 0
+
+        # ゲームクリア
+        if phase == 3:
+            move_pl(screen, key)
+            move_bullet(screen)
+            draw_txt(screen, "GAME CLEAR", 480, 300, 80, SILVER)
+            if tmr == 150:
+                phase = 0
+                tmr = 0
+
         draw_explode(screen)
-        screen.blit(img_energy, [40, 680])
-        pygame.draw.rect(
-            screen, (64, 32, 32), [40 + pl_e * 4, 680, (100 - pl_e) * 4, 12]
-        )
+        draw_txt(screen, "SCORE " + str(score), 200, 30, 50, SILVER)
+        if phase != 0:
+            screen.blit(img_energy, [40, 680])
+            pygame.draw.rect(
+                screen, (64, 32, 32), [40 + pl_e * 4, 680, (100 - pl_e) * 4, 12]
+            )
 
         pygame.display.update()
         clock.tick(30)
