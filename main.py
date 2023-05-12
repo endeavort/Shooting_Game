@@ -76,6 +76,11 @@ exp_no = 0  # リスト番号
 exp_p = [0] * EXPLODE_MAX  # 画像番号
 exp_x = [0] * EXPLODE_MAX  # x座標
 exp_y = [0] * EXPLODE_MAX  # y座標
+# SE
+se_radiation = None  # 放射
+se_damage = None  # ダメージ
+se_explosion = None  # 爆発
+se_shot = None  # 撃つ
 
 
 # 2点間の距離を求める関数
@@ -118,9 +123,11 @@ def move_pl(src, key):
     k_space = (k_space + 1) * key[K_SPACE]
     if k_space % 5 == 1:
         set_bullet(0)
+        se_shot.play()
     k_z = (k_z + 1) * key[K_z]
     if k_z == 1 and pl_e > 10:
         set_bullet(10)
+        se_radiation.play()
         pl_e -= 10
     # 描画処理
     if pl_m % 2 == 0:
@@ -145,6 +152,7 @@ def move_pl(src, key):
                         tmr = 0
                     if pl_m == 0:
                         pl_m = 60
+                        se_damage.play()
                     en1_f[i] = False
 
 
@@ -270,10 +278,15 @@ def draw_explode(srcn):
 
 def main():
     global bg_y, tmr, phase, score, pl_x, pl_y, pl_d, pl_e, pl_m
+    global se_radiation, se_damage, se_explosion, se_shot
     pygame.init()
     pygame.display.set_caption("Shooting Game")
     screen = pygame.display.set_mode((960, 720))
     clock = pygame.time.Clock()
+    se_radiation = pygame.mixer.Sound("sounds/radiation.ogg")
+    se_damage = pygame.mixer.Sound("sounds/damage.ogg")
+    se_explosion = pygame.mixer.Sound("sounds/explosion.ogg")
+    se_shot = pygame.mixer.Sound("sounds/shot.ogg")
 
     while True:
         # イベント処理
@@ -319,6 +332,8 @@ def main():
                     en1_f[i] = False
                 for i in range(BULLET_MAX):
                     bu_f[i] = False
+                pygame.mixer.music.load("sounds/bgm.ogg")
+                pygame.mixer.music.play(-1)
 
         # ゲーム画面
         if phase == 1:
@@ -326,7 +341,7 @@ def main():
             move_bullet(screen)
             appear_enemy()
             move_enemy(screen)
-            if tmr == 30 * 10:
+            if tmr == 30 * 60:
                 phase = 3
                 tmr = 0
 
@@ -334,8 +349,21 @@ def main():
         if phase == 2:
             move_bullet(screen)
             move_enemy(screen)
-            draw_txt(screen, "GAME OVER", 480, 300, 80, RED)
-            if tmr == 150:
+            if tmr == 1:
+                pygame.mixer.music.stop()
+            if tmr <= 90:
+                if tmr % 5 == 0:
+                    set_effect(
+                        pl_x + random.randint(-60, 60), pl_y + random.randint(-60, 60)
+                    )
+                if tmr % 10 == 10:
+                    se_damage.play()
+            if tmr == 120:
+                pygame.mixer.music.load("sounds/gameover.ogg")
+                pygame.mixer.music.play(0)
+            if tmr > 120:
+                draw_txt(screen, "GAME OVER", 480, 300, 80, RED)
+            if tmr == 400:
                 phase = 0
                 tmr = 0
 
@@ -343,8 +371,14 @@ def main():
         if phase == 3:
             move_pl(screen, key)
             move_bullet(screen)
-            draw_txt(screen, "GAME CLEAR", 480, 300, 80, SILVER)
-            if tmr == 150:
+            if tmr == 1:
+                pygame.mixer.music.stop()
+            if tmr == 2:
+                pygame.mixer.music.load("sounds/gameclear.ogg")
+                pygame.mixer.music.play(0)
+            if tmr > 20:
+                draw_txt(screen, "GAME CLEAR", 480, 300, 80, SILVER)
+            if tmr == 300:
                 phase = 0
                 tmr = 0
 
