@@ -39,6 +39,7 @@ img_title = [
 # 色
 BLACK = (0, 0, 0)
 SILVER = (192, 208, 224)
+GOLD = (218, 179, 0)
 RED = (255, 0, 0)
 CYAN = (0, 224, 255)
 
@@ -220,15 +221,51 @@ def move_bullet(src):
 # 敵の出現関数
 def appear_enemy():
     sec = tmr / 30
-    # if 0 < sec < 15 and tmr % 60 == 0:
-    #     set_enemy(random.randint(20, 940), LINE[0], 90, 1, 8, 1)
-    # if 15 < sec < 30:
-    #     set_enemy(random.randint(20, 940), LINE[0], 90, 2, 12, 1)
-    # if 30 < sec < 45:
-    #     set_enemy(random.randint(100, 860), LINE[0], random.randint(60, 120), 3, 6, 3)
-    # if 45 < sec < 60:
-    #     set_enemy(random.randint(100, 860), LINE[0], 90, 4, 12, 2)
-    if tmr == 30 * 5:
+    if 0 < sec < 25:
+        if tmr % 15 == 0:
+            set_enemy(random.randint(20, 940), LINE[0], 90, 1, 8, 1)
+    if 30 < sec < 55:
+        if tmr % 10 == 0:
+            set_enemy(random.randint(20, 940), LINE[0], 90, 2, 12, 1)
+    if 60 < sec < 85:
+        if tmr % 15 == 0:
+            set_enemy(
+                random.randint(100, 860), LINE[0], random.randint(60, 120), 3, 6, 3
+            )
+    if 90 < sec < 115:
+        if tmr % 20 == 0:
+            set_enemy(random.randint(100, 860), LINE[0], 90, 4, 12, 2)
+    if 120 < sec < 145:
+        if tmr % 20 == 0:
+            set_enemy(random.randint(20, 940), LINE[0], 90, 1, 8, 1)
+            set_enemy(
+                random.randint(100, 860), LINE[0], random.randint(60, 120), 3, 6, 3
+            )
+    if 150 < sec < 175:
+        if tmr % 20 == 0:
+            set_enemy(random.randint(20, 940), LINE[1], 270, 1, 8, 1)
+            set_enemy(
+                random.randint(20, 940), LINE[0], random.randint(70, 110), 2, 12, 1
+            )
+    if 180 < sec < 205:
+        if tmr % 20 == 0:
+            set_enemy(
+                random.randint(100, 860), LINE[0], random.randint(60, 120), 3, 6, 3
+            )
+            set_enemy(random.randint(100, 860), LINE[0], 90, 4, 12, 2)
+    if 210 < sec < 235:
+        if tmr % 20 == 0:
+            set_enemy(LINE[2], random.randint(40, 680), 0, 1, 12, 1)
+            set_enemy(LINE[3], random.randint(40, 680), 180, 2, 18, 1)
+    if 240 < sec < 265:
+        if tmr % 30 == 0:
+            set_enemy(random.randint(20, 940), LINE[0], 90, 1, 8, 1)
+            set_enemy(random.randint(20, 940), LINE[0], 90, 2, 12, 1)
+            set_enemy(
+                random.randint(100, 860), LINE[0], random.randint(60, 120), 3, 6, 3
+            )
+            set_enemy(random.randint(100, 860), LINE[0], 90, 4, 12, 2)
+    if tmr == 30 * 270:
         set_enemy(480, -210, 90, 5, 4, 200)
 
 
@@ -251,7 +288,7 @@ def set_enemy(x, y, a, ty, sp, s):
 
 # 敵の移動関数
 def move_enemy(scrn):
-    global pl_e, phase, tmr, score
+    global pl_e, phase, tmr, score, hiscore, new_record
     for i in range(ENEMY_MAX):
         if en_f[i]:
             ang = -90 - en_a[i]
@@ -311,6 +348,9 @@ def move_enemy(scrn):
                             png = en_type[i] + 1
                         en_s[i] -= 1
                         score += 100
+                        if score > hiscore:
+                            hiscore = score
+                            new_record = True
                         if en_s[i] == 0:
                             en_f[i] = False
                             if pl_e < 100:
@@ -352,7 +392,7 @@ def draw_explode(srcn):
 
 
 def main():
-    global bg_y, tmr, phase, score, pl_x, pl_y, pl_d, pl_e, pl_m
+    global bg_y, tmr, phase, score, pl_x, pl_y, pl_d, pl_e, pl_m, new_record
     global se_radiation, se_damage, se_explosion, se_shot
     pygame.init()
     pygame.display.set_caption("Shooting Game")
@@ -398,6 +438,7 @@ def main():
                 phase = 1
                 tmr = 0
                 score = 0
+                new_record = False
                 pl_x = 480
                 pl_y = 600
                 pl_d = 0
@@ -416,9 +457,6 @@ def main():
             move_bullet(screen)
             appear_enemy()
             move_enemy(screen)
-            if tmr == 30 * 60:
-                phase = 3
-                tmr = 0
 
         # ゲームオーバー
         if phase == 2:
@@ -437,6 +475,8 @@ def main():
                 pygame.mixer.music.load("sounds/gameover.ogg")
                 pygame.mixer.music.play(0)
             if tmr > 120:
+                if new_record:
+                    draw_txt(screen, "NEW RECORD " + str(hiscore), 480, 400, 60, CYAN)
                 draw_txt(screen, "GAME OVER", 480, 300, 80, RED)
             if tmr == 400:
                 phase = 0
@@ -448,23 +488,34 @@ def main():
             move_bullet(screen)
             if tmr == 1:
                 pygame.mixer.music.stop()
-            if tmr == 2:
+            if tmr < 30 and tmr % 2 == 0:
+                pygame.draw.rect(screen, (192, 0, 0), [0, 0, 960, 720])
+            if tmr == 120:
                 pygame.mixer.music.load("sounds/gameclear.ogg")
                 pygame.mixer.music.play(0)
-            if tmr > 20:
+            if tmr > 120:
                 draw_txt(screen, "GAME CLEAR", 480, 300, 80, SILVER)
-            if tmr == 300:
+                if new_record:
+                    draw_txt(screen, "NEW RECORD " + str(hiscore), 480, 400, 60, CYAN)
+            if tmr == 400:
                 phase = 0
                 tmr = 0
 
         draw_explode(screen)
         draw_txt(screen, "SCORE " + str(score), 200, 30, 50, SILVER)
+        if new_record:
+            if tmr % 5 == 0:
+                draw_txt(screen, "HISCORE " + str(hiscore), 760, 30, 50, SILVER)
+            else:
+                draw_txt(screen, "HISCORE " + str(hiscore), 760, 30, 50, GOLD)
+        else:
+            draw_txt(screen, "HISCORE " + str(hiscore), 760, 30, 50, SILVER)
         if phase != 0:
             screen.blit(img_energy, [40, 680])
             pygame.draw.rect(
                 screen, (64, 32, 32), [40 + pl_e * 4, 680, (100 - pl_e) * 4, 12]
             )
-
+        print(int(tmr / 30))
         pygame.display.update()
         clock.tick(30)
 
