@@ -13,14 +13,23 @@ img_pl = [
     pygame.image.load("images/player_burner.png"),
 ]
 img_bu = pygame.image.load("images/bullet.png")
-img_enemy1 = [
+img_en1 = [
     pygame.image.load("images/enemy1.png"),
     pygame.image.load("images/enemy1_atk.png"),
+]
+img_exp = [
+    None,
+    pygame.image.load("images/explosion1.png"),
+    pygame.image.load("images/explosion2.png"),
+    pygame.image.load("images/explosion3.png"),
+    pygame.image.load("images/explosion4.png"),
+    pygame.image.load("images/explosion5.png"),
 ]
 
 # ============ 定数 ============
 BULLET_MAX = 100  # 発射できる弾の数（最大値）
 ENEMY_MAX = 100  # 敵の数（最大値）
+EXPLODE_MAX = 100  # 爆発演出の数（最大値）
 LINE = [-80, 800, -80, 1040]  # 敵の出現エリア枠(上, 下, 左, 右)
 
 # ============ 変数 ============
@@ -46,6 +55,11 @@ en1_y = [0] * ENEMY_MAX  # y座標
 en1_a = [0] * ENEMY_MAX  # 角度
 en1_type = [0] * ENEMY_MAX  # 種類（本体or弾）
 en1_speed = [0] * ENEMY_MAX  # スピード
+# 爆発
+exp_no = 0  # リスト番号
+exp_p = [0] * EXPLODE_MAX  # 画像番号
+exp_x = [0] * EXPLODE_MAX  # x座標
+exp_y = [0] * EXPLODE_MAX  # y座標
 
 
 # 2点間の距離を求める関数
@@ -162,19 +176,44 @@ def move_enemy(scrn):
                 or LINE[1] < en1_y[i]
             ):
                 en1_f[i] = False
-            if en1_type != 1:
-                w = img_enemy1[en1_type[i]].get_width()
-                h = img_enemy1[en1_type[i]].get_height()
+            # 弾と敵の接触判定
+            if en1_type[i] != 1:
+                w = img_en1[en1_type[i]].get_width()
+                h = img_en1[en1_type[i]].get_height()
                 r = int((w + h) / 4 + 12)
-            for n in range(BULLET_MAX):
-                if bu_f[n] and get_dis(en1_x[i], en1_y[i], bu_x[n], bu_y[n]) < r**2:
-                    bu_f[n] = False
-                    en1_f[i] = False
-            img_rz = pygame.transform.rotozoom(img_enemy1[png], ang, 1.0)
+                for n in range(BULLET_MAX):
+                    if (
+                        bu_f[n]
+                        and get_dis(en1_x[i], en1_y[i], bu_x[n], bu_y[n]) < r**2
+                    ):
+                        bu_f[n] = False
+                        en1_f[i] = False
+                        set_effect(en1_x[i], en1_y[i])
+            # 描画処理
+            img_rz = pygame.transform.rotozoom(img_en1[png], ang, 1.0)
             scrn.blit(
                 img_rz,
                 [en1_x[i] - img_rz.get_width() / 2, en1_y[i] - img_rz.get_height() / 2],
             )
+
+
+# 爆発のセット関数
+def set_effect(x, y):
+    global exp_no
+    exp_p[exp_no] = 1
+    exp_x[exp_no] = x
+    exp_y[exp_no] = y
+    exp_no = (exp_no + 1) % EXPLODE_MAX
+
+
+# 爆発の演出
+def draw_explode(srcn):
+    for i in range(EXPLODE_MAX):
+        if exp_p[i] >= 1:
+            srcn.blit(img_exp[exp_p[i]], [exp_x[i] - 48, exp_y[i] - 48])
+            exp_p[i] += 1
+            if exp_p[i] > 5:
+                exp_p[i] = 0
 
 
 def main():
@@ -210,6 +249,7 @@ def main():
         move_bullet(screen)
         appear_enemy()
         move_enemy(screen)
+        draw_explode(screen)
 
         pygame.display.update()
         clock.tick(30)
