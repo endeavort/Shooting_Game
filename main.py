@@ -19,6 +19,8 @@ img_enemy = [
     pygame.image.load("images/enemy2.png"),
     pygame.image.load("images/enemy3.png"),
     pygame.image.load("images/enemy4.png"),
+    pygame.image.load("images/enemy_boss.png"),
+    pygame.image.load("images/enemy_boss_f.png"),
 ]
 img_exp = [
     None,
@@ -158,7 +160,8 @@ def move_pl(src, key):
                     if pl_m == 0:
                         pl_m = 60
                         se_damage.play()
-                    en_f[i] = False
+                    if en_type[i] < 5:
+                        en_f[i] = False
 
 
 # 弾のセット関数
@@ -199,17 +202,16 @@ def move_bullet(src):
 # 敵の出現関数
 def appear_enemy():
     sec = tmr / 30
-    if tmr % 30 == 0:
-        if 0 < sec < 15:
-            set_enemy(random.randint(20, 940), LINE[0], 90, 1, 8, 1)
-        if 15 < sec < 30:
-            set_enemy(random.randint(20, 940), LINE[0], 90, 2, 12, 1)
-        if 30 < sec < 45:
-            set_enemy(
-                random.randint(100, 860), LINE[0], random.randint(60, 120), 3, 6, 3
-            )
-        if 45 < sec < 60:
-            set_enemy(random.randint(100, 860), LINE[0], 90, 4, 12, 2)
+    # if 0 < sec < 15 and tmr % 60 == 0:
+    #     set_enemy(random.randint(20, 940), LINE[0], 90, 1, 8, 1)
+    # if 15 < sec < 30:
+    #     set_enemy(random.randint(20, 940), LINE[0], 90, 2, 12, 1)
+    # if 30 < sec < 45:
+    #     set_enemy(random.randint(100, 860), LINE[0], random.randint(60, 120), 3, 6, 3)
+    # if 45 < sec < 60:
+    #     set_enemy(random.randint(100, 860), LINE[0], 90, 4, 12, 2)
+    if tmr == 30 * 5:
+        set_enemy(480, -210, 90, 5, 4, 200)
 
 
 # 敵のセット関数
@@ -236,37 +238,74 @@ def move_enemy(scrn):
         if en_f[i]:
             ang = -90 - en_a[i]
             png = en_type[i]
-            en_x[i] += en_speed[i] * math.cos(math.radians(en_a[i]))
-            en_y[i] += en_speed[i] * math.sin(math.radians(en_a[i]))
-            if en_type[i] == 4:
-                # 弾の発射
-                en_c[i] += 1
-                ang = en_c[i] * 10
-                if en_y[i] > 240 and en_a[i] == 90:
-                    en_a[i] = random.choice([50, 70, 110, 130])
-                    set_enemy(en_x[i], en_y[i], 90, 0, 6, 0)
-            if (
-                en_x[i] < LINE[2]
-                or LINE[3] < en_x[i]
-                or en_y[i] < LINE[0]
-                or LINE[1] < en_y[i]
-            ):
-                en_f[i] = False
+            # 敵の動き
+            if en_type[i] < 5:
+                en_x[i] += en_speed[i] * math.cos(math.radians(en_a[i]))
+                en_y[i] += en_speed[i] * math.sin(math.radians(en_a[i]))
+                if en_type[i] == 4:
+                    # 弾の発射
+                    en_c[i] += 1
+                    ang = en_c[i] * 10
+                    if en_y[i] > 240 and en_a[i] == 90:
+                        en_a[i] = random.choice([50, 70, 110, 130])
+                        set_enemy(en_x[i], en_y[i], 90, 0, 6, 0)
+                if (
+                    en_x[i] < LINE[2]
+                    or LINE[3] < en_x[i]
+                    or en_y[i] < LINE[0]
+                    or LINE[1] < en_y[i]
+                ):
+                    en_f[i] = False
+            # ボスの動き
+            else:
+                if en_c[i] == 0:
+                    en_y[i] += 2
+                    if en_y[i] > 200:
+                        en_c[i] = 1
+                elif en_c[i] == 1:
+                    en_x[i] -= en_speed[i]
+                    if en_x[i] < 200:
+                        for j in range(0, 10):
+                            set_enemy(en_x[i], en_y[i] + 80, j * 20, 0, 6, 0)
+                        en_c[i] = 2
+                else:
+                    en_x[i] += en_speed[i]
+                    if en_x[i] > 760:
+                        for j in range(0, 10):
+                            set_enemy(en_x[i], en_y[i] + 80, j * 20, 0, 6, 0)
+                        en_c[i] = 1
+                if en_s[i] < 100 and tmr % 30 == 0:
+                    set_enemy(en_x[i], en_y[i] + 80, random.randint(60, 120), 0, 6, 0)
             # 弾と敵の接触判定
             if en_type[i] != 0:
                 w = img_enemy[en_type[i]].get_width()
                 h = img_enemy[en_type[i]].get_height()
                 r = int((w + h) / 4 + 12)
+                er = int((w + h) / 4)
                 for n in range(BULLET_MAX):
                     if bu_f[n] and get_dis(en_x[i], en_y[i], bu_x[n], bu_y[n]) < r**2:
                         bu_f[n] = False
-                        set_effect(en_x[i], en_y[i])
-                        en_c[i] -= 1
+                        set_effect(
+                            en_x[i] + random.randint(-er, er),
+                            en_y[i] + random.randint(-er, er),
+                        )
+                        if en_type[i] == 5:
+                            png = en_type[i] + 1
+                        en_s[i] -= 1
                         score += 100
-                        if en_s == 0:
+                        if en_s[i] == 0:
                             en_f[i] = False
-                        if pl_e < 100:
-                            pl_e += 1
+                            if pl_e < 100:
+                                pl_e += 1
+                            if en_type[i] == 5 and phase == 1:
+                                phase = 3
+                                tmr = 0
+                                for j in range(10):
+                                    set_effect(
+                                        en_x[i] + random.randint(-er, er),
+                                        en_y[i] + random.randint(-er, er),
+                                    )
+                                se_explosion.play()
             # 描画処理
             img_rz = pygame.transform.rotozoom(img_enemy[png], ang, 1.0)
             scrn.blit(
