@@ -48,6 +48,11 @@ en1_type = [0] * ENEMY_MAX  # 種類（本体or弾）
 en1_speed = [0] * ENEMY_MAX  # スピード
 
 
+# 2点間の距離を求める関数
+def get_dis(x1, y1, x2, y2):
+    return (x1 - x2) ** 2 + (y1 - y2) ** 2
+
+
 # プレイヤー操作関数
 def movd_pl(src, key):
     global pl_x, pl_y, pl_d, k_space, k_z
@@ -157,6 +162,14 @@ def move_enemy(scrn):
                 or LINE[1] < en1_y[i]
             ):
                 en1_f[i] = False
+            if en1_type != 1:
+                w = img_enemy1[en1_type[i]].get_width()
+                h = img_enemy1[en1_type[i]].get_height()
+                r = int((w + h) / 4 + 12)
+            for n in range(BULLET_MAX):
+                if bu_f[n] and get_dis(en1_x[i], en1_y[i], bu_x[n], bu_y[n]) < r**2:
+                    bu_f[n] = False
+                    en1_f[i] = False
             img_rz = pygame.transform.rotozoom(img_enemy1[png], ang, 1.0)
             scrn.blit(
                 img_rz,
