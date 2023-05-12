@@ -1,6 +1,7 @@
 import pygame
 import sys
 import math
+import random
 from pygame.locals import *  # pygame.の省略用コード※関数は省略不可
 
 # 画像
@@ -11,10 +12,16 @@ img_pl = [
     pygame.image.load("images/player_r.png"),
     pygame.image.load("images/player_burner.png"),
 ]
-imb_bu = pygame.image.load("images/bullet.png")
+img_bu = pygame.image.load("images/bullet.png")
+img_enemy1 = [
+    pygame.image.load("images/enemy1.png"),
+    pygame.image.load("images/enemy1_atk.png"),
+]
 
 # ============ 定数 ============
-BULLET_MAX = 100  # 発射できる弾の数
+BULLET_MAX = 100  # 発射できる弾の数（最大値）
+ENEMY_MAX = 100  # 敵の数（最大値）
+LINE = [-80, 800, -80, 1040]  # 敵の出現エリア枠(上, 下, 左, 右)
 
 # ============ 変数 ============
 bg_y = 0  # 背景スクロール用
@@ -26,11 +33,19 @@ pl_x = 480  # x座標
 pl_y = 360  # y座標
 pl_d = 0  # 傾き
 # 弾
-bu_no = 0
+bu_no = 0  # リスト番号
 bu_f = [False] * BULLET_MAX  # 発射中フラグ
 bu_x = [0] * BULLET_MAX  # x座標
 bu_y = [0] * BULLET_MAX  # y座標
 bu_a = [0] * BULLET_MAX  # 角度
+# 敵1
+en1_no = 0  # リスト番号
+en1_f = [False] * ENEMY_MAX  # 発射中フラグ
+en1_x = [0] * ENEMY_MAX  # x座標
+en1_y = [0] * ENEMY_MAX  # y座標
+en1_a = [0] * ENEMY_MAX  # 角度
+en1_type = [0] * ENEMY_MAX  # 種類（本体or弾）
+en1_speed = [0] * ENEMY_MAX  # スピード
 
 
 # プレイヤー操作関数
@@ -92,13 +107,61 @@ def move_bullet(src):
         if bu_f[i]:
             bu_x[i] += 36 * math.cos(math.radians(bu_a[i]))
             bu_y[i] += 36 * math.sin(math.radians(bu_a[i]))
-            img_rz = pygame.transform.rotozoom(imb_bu, -90 - bu_a[i], 1.0)
+            img_rz = pygame.transform.rotozoom(img_bu, -90 - bu_a[i], 1.0)
             src.blit(
                 img_rz,
                 [bu_x[i] - img_rz.get_width() / 2, bu_y[i] - img_rz.get_height() / 2],
             )
             if bu_y[i] < 0 or bu_x[i] < 0 or bu_x[i] > 960:
                 bu_f[i] = False
+
+
+# 敵の出現関数
+def appear_enemy():
+    if tmr % 30 == 0:
+        set_enemy(random.randint(20, 940), LINE[0], 90, 0, 6)
+
+
+# 敵のセット関数
+def set_enemy(x, y, a, ty, sp):
+    global en1_no
+    while True:
+        if not en1_f[en1_no]:
+            en1_f[en1_no] = True
+            en1_x[en1_no] = x
+            en1_y[en1_no] = y
+            en1_a[en1_no] = a
+            en1_type[en1_no] = ty
+            en1_speed[en1_no] = sp
+            break
+        en1_no = (en1_no + 1) % ENEMY_MAX
+
+
+# 敵の移動関数
+def move_enemy(scrn):
+    for i in range(ENEMY_MAX):
+        if en1_f[i]:
+            ang = -90 - en1_a[i]
+            png = en1_type[i]
+            en1_x[i] += en1_speed[i] * math.cos(math.radians(en1_a[i]))
+            en1_y[i] += en1_speed[i] * math.sin(math.radians(en1_a[i]))
+            if en1_type[i] == 0 and en1_y[i] > 360:
+                # 弾の発射
+                set_enemy(en1_x[i], en1_y[i], 90, 1, 8)
+                en1_a[i] = -45
+                en1_speed[i] = 16
+            if (
+                en1_x[i] < LINE[2]
+                or LINE[3] < en1_x[i]
+                or en1_y[i] < LINE[0]
+                or LINE[1] < en1_y[i]
+            ):
+                en1_f[i] = False
+            img_rz = pygame.transform.rotozoom(img_enemy1[png], ang, 1.0)
+            scrn.blit(
+                img_rz,
+                [en1_x[i] - img_rz.get_width() / 2, en1_y[i] - img_rz.get_height() / 2],
+            )
 
 
 def main():
@@ -132,6 +195,8 @@ def main():
         key = pygame.key.get_pressed()
         movd_pl(screen, key)
         move_bullet(screen)
+        appear_enemy()
+        move_enemy(screen)
 
         pygame.display.update()
         clock.tick(30)
